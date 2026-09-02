@@ -17,7 +17,8 @@ This document describes how to build the MVP in the right order, what each phase
 
 ## Phase 0 — Prompt development (before any code)
 **Duration:** 3–5 days  
-**Who does the work:** Founder (you), not a developer
+**Who does the work:** Founder (you), not a developer  
+**Status: ✅ Done** — see [`phase0-prompts.md`](phase0-prompts.md) for the validated prompts and worked test cases.
 
 This phase happens before a line of code is written. It's the most important phase and the one most likely to be skipped. Don't skip it.
 
