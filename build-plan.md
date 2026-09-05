@@ -36,7 +36,8 @@ This phase happens before a line of code is written. It's the most important pha
 
 ## Phase 1 — Core loop backend
 **Duration:** 1–2 weeks  
-**Deliverable:** A working API you can call from the command line or Postman
+**Deliverable:** A working API you can call from the command line or Postman  
+**Status: ✅ Code written** — see [`server/`](server/). Unit tests pass (`npm run test`). **Not yet fully verified end-to-end** — that needs your own Anthropic, Clerk, and Sentry keys in `server/.env` (see `server/README.md`), which I cannot obtain for you.
 
 Build in this order:
 1. **Secrets setup first, before any other code:** create the server-side `.env` file, add it to `.gitignore`, confirm it's ignored with `git status` before the first commit. Every credential (Anthropic key, Clerk secret key, later Sentry DSN) goes here and nowhere else — never in frontend code, never committed.

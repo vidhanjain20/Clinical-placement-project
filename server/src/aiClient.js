@@ -1,0 +1,55 @@
+import Anthropic from '@anthropic-ai/sdk';
+import { EXTRACTION_PROMPT, RECOMMENDATION_PROMPT } from './prompts.js';
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// Claude sometimes wraps JSON in markdown code fences or adds stray text
+// around it despite being asked for JSON only. This pulls out the first
+// {...} or [...] block found, rather than assuming the whole response is
+// clean JSON. Pure function — no network call — so it's unit-testable.
+export function extractJson(text) {
+  const match = text.match(/[{[][\s\S]*[}\]]/);
+  if (!match) throw new Error('No JSON found in model response');
+  return JSON.parse(match[0]);
+}
+
+// Calls the model, tries to parse JSON out of the reply, and retries once
+// with a stricter instruction if parsing fails (design-spec.md §5). The
+// actual "call the model" step is injected as `callModel` so this
+// retry/parse logic can be unit-tested with a fake model that returns
+// broken JSON, without needing a real API key.
+export async function callAndParseJson(systemPrompt, userMessage, callModel = defaultCallModel) {
+  try {
+    const first = await callModel(systemPrompt, userMessage);
+    return { ok: true, data: extractJson(first) };
+  } catch {
+    try {
+      const retry = await callModel(
+        systemPrompt + '\n\nIMPORTANT: reply with ONLY the JSON object, no other text.',
+        userMessage,
+      );
+      return { ok: true, data: extractJson(retry) };
+    } catch {
+      return { ok: false, data: null };
+    }
+  }
+}
+
+async function defaultCallModel(systemPrompt, userMessage) {
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-5',
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }],
+  });
+  return response.content[0].text;
+}
+
+export async function runExtraction(rawText) {
+  return callAndParseJson(EXTRACTION_PROMPT, rawText);
+}
+
+export async function runRecommendation({ todaysGaps, gapTally, placementContext, assessmentDate }) {
+  const userMessage = JSON.stringify({ todaysGaps, gapTally, placementContext, assessmentDate });
+  return callAndParseJson(RECOMMENDATION_PROMPT, userMessage);
+}
