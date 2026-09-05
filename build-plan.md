@@ -65,7 +65,7 @@ Add voice input (Web Speech API mic button) here — it's 20 lines of JS on top 
 
 **Done when:** You can open the app on your phone, speak or type a placement note, and read back useful extracted data and 1–3 recommendations within 60 seconds.
 
-**Then:** Use it for a real placement week before building anything else. This is the first real validation point.
+**Then:** Use it for a real placement week before building anything else. This is the first real validation point. While you're the only user, spot-check the canonical gap tags directly in the SQLite database (any free DB browser app) rather than building a tag-management screen — that's real UI work for a problem that only exists at pilot scale.
 
 ---
 

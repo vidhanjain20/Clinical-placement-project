@@ -95,6 +95,8 @@ The product should use the right column, not the left. You are the translator.
 
 **Your task:** As you test the extraction prompt, flag any gap labels that feel clinical-document-like rather than how you'd actually describe a gap to a friend. Rewrite the prompt to produce more natural language.
 
+**Ongoing task — weekly tag spot-check:** the recommendation call now invents new canonical gap tags on the fly when it decides today's gap doesn't match anything already tracked (see `design-spec.md` §2, `phase0-prompts.md` v2). Once a week during your own pilot use, glance at the list of canonical tags on your own account: are any two really the same thing that got split apart? Is any tag named in a way that sounds like a curriculum document rather than a student? Rename/merge as needed. This is light — a few minutes — but it's the only check on whether the AI's tag reconciliation is actually working correctly.
+
 ---
 
 ## Area 5 — The voice capture experience
@@ -143,6 +145,7 @@ The first capture experience is the most important moment in the product. A stud
 | Review recommendation output for clinical realism | Phase 0 + ongoing |
 | Review AI-generated PlacementMaps for each specialty | Before Phase 3 |
 | Audit gap label language for authenticity | Phase 0 + Phase 3 |
+| Weekly spot-check of AI-generated canonical gap tags | Phase 2 onward (ongoing during your own use) |
 | Test voice capture with messy real-world inputs | Before Phase 2 launch |
 | Write first-draft product copy (homepage, onboarding, capture prompt) | Before Phase 3 |
 | Recruit the first 5–10 pilot users from your own network | Phase 4 |
