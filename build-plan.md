@@ -39,15 +39,17 @@ This phase happens before a line of code is written. It's the most important pha
 **Deliverable:** A working API you can call from the command line or Postman
 
 Build in this order:
-1. Database schema: Student, Placement, Note, LearnerModel tables
-2. Auth: signup, login, session — individual student accounts
-3. `POST /notes` endpoint: accepts raw_text → runs extraction call → runs recommendation call → saves Note → updates LearnerModel gap_tally → returns structured result
-4. `GET /learner-model` endpoint: returns current gap_tally, exposure summary
-5. `GET /notes` endpoint: returns history list with extracted tags
+1. **Secrets setup first, before any other code:** create the server-side `.env` file, add it to `.gitignore`, confirm it's ignored with `git status` before the first commit. Every credential (Anthropic key, Clerk secret key, later Sentry DSN) goes here and nowhere else — never in frontend code, never committed.
+2. Database schema: Student, Placement, Note, LearnerModel tables
+3. Auth via **Clerk** (see `design-spec.md` §6a) — not a hand-built login system. Individual student accounts.
+4. Sentry set up and wired into the Express app (see §6d) — do this before writing the endpoints below, so every failure from here on is captured automatically, not just the ones you happen to notice.
+5. `POST /notes` endpoint: accepts raw_text → runs extraction call → runs recommendation call → saves Note → updates LearnerModel gap_tally → returns structured result. Apply per-user rate limiting on this endpoint from the start (see §6b) — it's the one calling paid AI APIs.
+6. `GET /learner-model` endpoint: returns current gap_tally, exposure summary
+7. `GET /notes` endpoint: returns history list with extracted tags
 
 Test each endpoint manually. Run unit tests for gap-tally aggregation and JSON parsing before moving on.
 
-**Done when:** You can POST a raw placement note and get back a structured result with recommendations — entirely via API, no UI yet.
+**Done when:** You can POST a raw placement note and get back a structured result with recommendations — entirely via API, no UI yet — with real auth, rate limiting, no secrets in the codebase, and errors landing in Sentry.
 
 ---
 

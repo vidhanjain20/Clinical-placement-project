@@ -159,13 +159,40 @@ Reusing Continuity's proven stack to move fast:
 | Backend | Node / Express | Same |
 | Database | SQLite → Postgres | SQLite for solo pilot; migrate when load demands it |
 | AI | Anthropic API (Claude) | Two calls per note submission |
-| Auth | Email + password, session cookies | Individual accounts (not single-clinic like Continuity) |
+| Auth | **Clerk** (managed auth provider) | See §6a — not homegrown, unlike Continuity's single shared login |
 | Hosting | Render / Railway / Fly.io | UK/EU region, cheap tier fine at pilot scale |
 | Voice | Web Speech API | Client-side, zero cost |
+| Error monitoring | Sentry | See §6b |
 
-No new dependencies added for MVP beyond the Anthropic SDK.
+New dependencies beyond the Anthropic SDK: Clerk's SDK, a rate-limiting middleware (`express-rate-limit`), and Sentry's SDK — all small, standard, free at pilot scale.
 
 ---
+
+## 6a. Authentication — use a managed provider, don't build it
+
+Because users here are individual students with real accounts (unlike Continuity's one-login-per-clinic), auth needs to be genuinely production-grade from day one: password hashing, session handling, password reset, and eventually things like email verification. Rolling this by hand is exactly the kind of code that looks fine in testing and fails quietly in a way that leaks someone's account.
+
+**Decision: use [Clerk](https://clerk.com)** for signup/login/session management. Free tier comfortably covers a solo pilot. It plugs into an Express backend via their Node SDK and into React via their prebuilt components, so the "Auth screens" work in Phase 2 becomes wiring up Clerk's components rather than building password forms from scratch.
+
+*(Supabase Auth is a reasonable alternative, and would make more sense specifically if the database migrates to Supabase's own Postgres later — worth revisiting at that point, not now.)*
+
+This replaces the "email + password, session cookies" line from the original spec.
+
+## 6b. Rate limiting
+
+The `POST /notes` endpoint triggers two paid Anthropic API calls per request. Without a limit, a bug in the frontend (or a malicious user) retrying in a loop could run up a real bill or degrade the app for everyone else — this is a cost and availability risk, not just an abuse risk.
+
+**Decision:** apply per-user rate limiting on `POST /notes` (e.g. a sane cap like 20 submissions/hour — well above real usage, low enough to stop a runaway loop) using `express-rate-limit` keyed by the authenticated student's ID. Applied in Phase 1, when the endpoint is first built — not bolted on later.
+
+## 6c. Secrets management
+
+The Anthropic API key, Clerk's secret key, and (later) Sentry's DSN must never appear in frontend code, git history, or client-visible network requests — any of those leaking means someone else can run up your AI bill or access user data under your name.
+
+**Rule:** all secrets live in a server-side `.env` file, loaded via environment variables, and `.env` is git-ignored from the first commit of Phase 1 (check this before writing a single line of backend code, not after). The frontend never holds an API key — every AI call and Clerk secret-key operation happens server-side, which the architecture in §2 already assumes.
+
+## 6d. Error monitoring
+
+**Decision:** integrate Sentry from Phase 1, not as a later add-on. It's a few lines of setup and immediately gives visibility into failures that would otherwise be invisible until a student mentions something felt broken — e.g. Anthropic API timeouts, malformed JSON hitting the fallback path more than expected, or auth errors. Given the error-handling design in §5 already anticipates several failure modes, Sentry is what tells you how often they're actually happening in practice, not just that they're handled gracefully when they do.
 
 ## 7. Privacy and compliance
 
