@@ -220,6 +220,12 @@ Do not build until the core loop is validated:
 - Native mobile app (responsive web is sufficient)
 - Notifications or reminders
 
+**Future integration ideas (not designed yet, candidates for Phase 2+):**
+- **WhatsApp reminders/recommendations** — deliver "what to seek today" via WhatsApp instead of only in-app, using the WhatsApp Business API or a wrapper like Twilio. Would satisfy the "notifications" need above through a channel students already check constantly, rather than building native push notifications.
+- **Notion / Google Docs connector** — auto-export notes and recommendations into a Notion page or Google Doc the student already keeps, via Notion's or Google's official APIs, for students who want their reflections living alongside their existing notes rather than only inside this app.
+
+Both are ordinary integration work once the core loop is proven — not attempted until then.
+
 ---
 
 ## 12. Roadmap (post-MVP)
