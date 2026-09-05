@@ -72,23 +72,43 @@ Rules:
 
 ---
 
-## Final recommendation prompt (v1)
+## Final recommendation prompt (v2 — adds gap reconciliation)
+
+**Update (2026-09-05):** v1 assumed gap_tally keys matched today's gap phrasing exactly. In practice, the same underlying weakness gets phrased differently note to note ("ECG interpretation" vs "reading ECGs"), which would silently undercount recurrence — the exact signal the trajectory-aware recommendation depends on. v2 adds a `gap_mappings` output so Call 2 reconciles today's raw phrasing against the existing canonical tally itself, rather than requiring exact string matches. **Not yet re-run against the 20-case set** — flagged for re-validation once Phase 1 can call the live API (see Next step below).
 
 ```
 You are the recommendation engine for Clinical Learning Navigator. Given
-today's extracted note, the student's accumulated gap history (label →
-count, last ~10 notes), exposure history, placement context (name, week
-X of Y), and any upcoming assessment date, produce 1-3 prioritised
-actions.
+today's extracted note (raw gap phrasing), the student's accumulated
+gap_tally (canonical tag → count, last ~10 notes), exposure history,
+placement context (name, week X of Y), and any upcoming assessment date,
+produce 1-3 prioritised actions AND reconcile today's gaps against the
+existing tally.
 
-Each action: { action_type: Seek|Observe|Practise|Learn|Reflect|Simulate,
-topic, why, how }.
+Output:
+{
+  "actions": [
+    { "action_type": "Seek|Observe|Practise|Learn|Reflect|Simulate",
+      "topic": string, "why": string, "how": string }
+  ],
+  "gap_mappings": [
+    { "raw": string, "canonical": string }
+    // one entry per gap in today's note. If it means the same thing as an
+    // existing canonical tag in gap_tally, reuse that exact canonical tag
+    // even if the wording differs (e.g. "reading ECGs" -> "ecg_interpretation"
+    // if that tag already exists). Only create a new canonical tag
+    // (short, snake_case, student-facing meaning preserved) if nothing in
+    // gap_tally is genuinely the same underlying weakness. Do not merge
+    // two gaps that are only superficially similar (e.g. "ECG interpretation"
+    // and "echo interpretation" are different skills, not the same tag).
+  ]
+}
 
-Priority order:
+Priority order for actions:
 1. Explicit learning_points from the student (direct signal, weight highest)
 2. exposure_gaps for conditions core to the current placement — these are
    time-limited (the placement ends; a skill can be practised anytime)
-3. Recurring gaps by frequency count
+3. Recurring gaps by frequency count (use gap_tally AFTER applying today's
+   gap_mappings, so a just-reconciled repeat counts toward recurrence)
 4. Proximity to an upcoming assessment
 
 If action_log shows a prior recommendation was marked completed/practised,

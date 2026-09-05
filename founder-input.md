@@ -70,7 +70,7 @@ The difference: specificity, tone, and the fact that it sounds like advice from 
 - Is anything here irrelevant or overly niche for a clinical student?
 - Does the skill list match what students are actually expected to do (not what consultants do)?
 
-Common placements to review: Cardiology, Respiratory, Gastroenterology, Neurology, Surgery (general), A&E, Psychiatry, GP, Paediatrics, O&G.
+**Scope for MVP: just the placement you're currently on.** The full list (Cardiology, Respiratory, Gastroenterology, Neurology, Surgery, A&E, Psychiatry, GP, Paediatrics, O&G) is real future work, but reviewing all 10 before you've even used the product yourself is premature — you only need one to run your own pilot week. Add the rest as you rotate through them or as pilot users need them.
 
 This is a one-time piece of work per placement type. Do it once, store the reviewed maps, and use them as defaults.
 

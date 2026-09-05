@@ -46,6 +46,10 @@ Six objects. Nothing more for MVP.
 
 Gap tallies are stored on LearnerModel (updated incrementally on each Note save) — not computed on every read. This keeps the recommendation call cheap.
 
+`gap_tally` keys are **canonical tags** (e.g. `ecg_interpretation`), not the raw phrasing a student used. Reconciling "ECG interpretation" and "reading ECGs" into the same tag is handled by the AI itself as part of Call 2 (see §2) rather than a fixed tag list — this keeps the extraction prompt fully freeform, at the cost of occasional merge mistakes the founder should spot-check during Phase 0/4.
+
+`LearnerModel` is one running profile per student, not per placement. Starting a new placement does not reset exposure/gap history — a gap flagged in cardiology still counts once the student moves to surgery. Only `PlacementMap` (the curriculum reference) is placement-specific.
+
 ---
 
 ## 2. The core loop
@@ -70,19 +74,27 @@ Two AI calls per note submission. That's the whole intelligence layer.
 3.  Pull LearnerModel.gap_tally (last ~10 notes' gap history).
 
 4.  CALL 2 — Recommendation prompt:
-    Input:  today's gaps + gap_tally + placement_map + upcoming assessment date (if set)
+    Input:  today's gaps (raw phrasing) + gap_tally (canonical tags + counts)
+            + placement_map + upcoming assessment date (if set)
     Output: [
       { action: "Practise", topic: "ECG interpretation", why: "...", how: "..." },
       { action: "Seek",     topic: "Syncope",            why: "...", how: "..." }
+    ],
+    gap_mappings: [
+      { raw: "reading ECGs", canonical: "ecg_interpretation" },     // matched existing tag
+      { raw: "syncope work-up", canonical: "syncope_workup" }       // new tag, none matched
     ]
     Max 3 actions.
 
 5.  Save Note with extraction_status: ok.
-6.  Update LearnerModel.gap_tally and .exposure incrementally.
-7.  Return structured data + next_actions to client.
+6.  Update LearnerModel.gap_tally using gap_mappings from step 4 (increment existing
+    canonical tags, add new ones) — this is what makes "you've flagged ECG
+    interpretation three times" reliable even when the student's wording varies.
+7.  Update LearnerModel.exposure incrementally.
+8.  Return structured data + next_actions to client.
 ```
 
-Call 2 is the differentiator: it sees the student's accumulated gap history, not just today. "You've flagged ECG interpretation three times" can only come from this call having memory.
+Call 2 is the differentiator: it sees the student's accumulated gap history, not just today, and it reconciles today's phrasing against that history so the count is accurate. "You've flagged ECG interpretation three times" can only come from this call having memory *and* correctly recognising that "reading ECGs" is the same gap as before — this is folded into Call 2's output rather than a separate third API call, since Call 2 already has both pieces of data (today's gaps and the existing tally) available to it.
 
 Both calls are freeform — no fixed curriculum reference in MVP. The PlacementMap (AI-generated at placement setup) provides soft curriculum grounding without requiring us to source or maintain official UKMLA data.
 
@@ -158,6 +170,7 @@ No new dependencies added for MVP beyond the Anthropic SDK.
 ## 7. Privacy and compliance
 
 - Students must not enter patient-identifiable information. This is stated at onboarding, on the capture screen, and in a basic privacy notice. Not technically blocked (impractical), but the product's responsibility is to make the expectation explicit.
+- **Client-side PII nudge (non-blocking):** before submit, a lightweight regex check flags likely identifiers (full names in a "Mr/Mrs/Ms X" pattern, NHS-number-shaped digit sequences, dates of birth) and shows "this might include identifying detail — remove it?" The student can dismiss and submit anyway. Cheap to build, meaningfully reduces real risk, never blocks a submission.
 - UK GDPR applies from first user. Hosting on UK/EU data-residency provider from day one.
 - This product is educational software, not a medical device under MHRA rules — no diagnosis, treatment, or clinical decision support for real patients. Re-evaluate if scope expands.
 - No data processing agreement required for MVP (individual students, not institutions). Have one ready for any institutional pilot.
