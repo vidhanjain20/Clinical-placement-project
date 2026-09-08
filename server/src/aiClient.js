@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { EXTRACTION_PROMPT, RECOMMENDATION_PROMPT } from './prompts.js';
+import { Sentry } from './sentry.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -22,14 +23,22 @@ export async function callAndParseJson(systemPrompt, userMessage, callModel = de
   try {
     const first = await callModel(systemPrompt, userMessage);
     return { ok: true, data: extractJson(first) };
-  } catch {
+  } catch (firstErr) {
     try {
       const retry = await callModel(
         systemPrompt + '\n\nIMPORTANT: reply with ONLY the JSON object, no other text.',
         userMessage,
       );
       return { ok: true, data: extractJson(retry) };
-    } catch {
+    } catch (retryErr) {
+      // Both attempts failed — this is the one place a bad API key, an
+      // exhausted credit balance, or a persistent model/parsing problem
+      // would otherwise vanish silently, since the caller only sees
+      // ok:false and degrades gracefully. Report it so it's visible
+      // somewhere instead of only showing up as "why are gaps not
+      // building up" days later.
+      console.error('AI call failed after retry:', firstErr.message, '/', retryErr.message);
+      Sentry.captureException(retryErr, { extra: { firstAttemptError: firstErr.message } });
       return { ok: false, data: null };
     }
   }
