@@ -48,10 +48,16 @@ async function defaultCallModel(systemPrompt, userMessage) {
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-5',
     max_tokens: 1024,
+    // We just want structured JSON back, not reasoning — extended
+    // thinking is on by default for this model and was eating into
+    // max_tokens, sometimes truncating the JSON output entirely.
+    thinking: { type: 'disabled' },
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
   });
-  return response.content[0].text;
+  const textBlock = response.content.find((block) => block.type === 'text');
+  if (!textBlock) throw new Error('No text block in model response');
+  return textBlock.text;
 }
 
 export async function runExtraction(rawText) {
