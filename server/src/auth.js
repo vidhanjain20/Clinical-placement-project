@@ -1,7 +1,7 @@
 // Auth is handled by Clerk (a managed auth provider — see design-spec.md
 // §6a), not hand-rolled. Clerk verifies the student's login and hands us
 // back a "userId" we can trust; we never see or store passwords ourselves.
-import { clerkMiddleware, requireAuth as clerkRequireAuth, clerkClient, getAuth } from '@clerk/express';
+import { clerkMiddleware, clerkClient, getAuth } from '@clerk/express';
 import { getOrCreateStudent } from './db.js';
 
 // DEV-ONLY STUB: with no CLERK_SECRET_KEY set, every request is treated as
@@ -25,24 +25,28 @@ export const attachClerk = hasClerkKeys ? clerkMiddleware() : (req, res, next) =
 // looks up (or creates, on first login) the local `students` row that
 // holds our own app-specific fields (year_of_study, medical_school, etc)
 // that Clerk has no reason to know about. Attaches it as req.student.
+//
+// Note: deliberately not using Clerk's own `requireAuth()` — it's built
+// for page routes and redirects unauthenticated requests to a sign-in
+// URL, which is the wrong behavior for a JSON API (a frontend fetch()
+// call should get a 401, not a redirect it can't follow usefully).
 export const requireAuth = hasClerkKeys
-  ? [
-      clerkRequireAuth(),
-      async (req, res, next) => {
-        try {
-          const { userId } = getAuth(req);
-          const clerkUser = await clerkClient.users.getUser(userId);
-          req.student = getOrCreateStudent({
-            clerkUserId: userId,
-            email: clerkUser.primaryEmailAddress?.emailAddress ?? '',
-            name: clerkUser.firstName ?? null,
-          });
-          next();
-        } catch (err) {
-          next(err);
-        }
-      },
-    ]
+  ? async (req, res, next) => {
+      try {
+        const { userId } = getAuth(req);
+        if (!userId) return res.status(401).json({ error: 'Sign-in required.' });
+
+        const clerkUser = await clerkClient.users.getUser(userId);
+        req.student = getOrCreateStudent({
+          clerkUserId: userId,
+          email: clerkUser.primaryEmailAddress?.emailAddress ?? '',
+          name: clerkUser.firstName ?? null,
+        });
+        next();
+      } catch (err) {
+        next(err);
+      }
+    }
   : (req, res, next) => {
       req.student = getOrCreateStudent({
         clerkUserId: 'dev-local-student',
