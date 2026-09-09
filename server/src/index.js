@@ -1,5 +1,5 @@
 import 'dotenv/config'; // loads .env into process.env — must be first
-import { Sentry } from './sentry.js'; // must be initialized before other imports that might error
+import { Sentry } from './sentry.js'; // Sentry.init() itself already ran in instrument.js (node --import)
 import express from 'express';
 import cors from 'cors';
 import { attachClerk, requireAuth } from './auth.js';
