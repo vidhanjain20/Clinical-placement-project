@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 
 const API_URL = import.meta.env.VITE_API_URL
 const MIN_LENGTH = 20 // matches server/src/routes/notes.js's own check
+const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition
 
 // Screen 3 from design-spec.md: capture a note, then show what came back
 // from the two Claude calls (extraction + recommendation). One component
@@ -14,6 +15,49 @@ export default function Capture() {
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [listening, setListening] = useState(false)
+  const recognitionRef = useRef(null)
+  const baseTextRef = useRef('') // rawText as it was when the mic was tapped — voice appends after it, never overwrites it
+  const finalTranscriptRef = useRef('')
+
+  useEffect(() => {
+    if (!SpeechRecognitionApi) return
+    const recognition = new SpeechRecognitionApi()
+    recognition.continuous = true
+    recognition.interimResults = true
+
+    recognition.onresult = (event) => {
+      let interimTranscript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript
+        if (event.results[i].isFinal) {
+          finalTranscriptRef.current += transcript
+        } else {
+          interimTranscript += transcript
+        }
+      }
+      setRawText(`${baseTextRef.current}${finalTranscriptRef.current}${interimTranscript}`)
+    }
+    // Covers both a genuine error and a silent recording (empty result):
+    // design-spec.md §5 says either should just reset the mic, no error shown.
+    recognition.onerror = () => setListening(false)
+    recognition.onend = () => setListening(false)
+
+    recognitionRef.current = recognition
+    return () => recognition.stop()
+  }, [])
+
+  function toggleListening() {
+    if (listening) {
+      recognitionRef.current.stop()
+      setListening(false)
+      return
+    }
+    baseTextRef.current = rawText ? `${rawText} ` : ''
+    finalTranscriptRef.current = ''
+    recognitionRef.current.start()
+    setListening(true)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -48,13 +92,26 @@ export default function Capture() {
     <div className="capture-screen">
       <form onSubmit={handleSubmit}>
         <label htmlFor="raw-text">What did you see today?</label>
-        <textarea
-          id="raw-text"
-          value={rawText}
-          onChange={(e) => setRawText(e.target.value)}
-          rows={6}
-          placeholder="e.g. Clerked a patient with CHF, struggled to hear the S3 gallop..."
-        />
+        <div className="textarea-wrap">
+          <textarea
+            id="raw-text"
+            value={rawText}
+            onChange={(e) => setRawText(e.target.value)}
+            rows={6}
+            placeholder="e.g. Clerked a patient with CHF, struggled to hear the S3 gallop..."
+          />
+          {SpeechRecognitionApi && (
+            <button
+              type="button"
+              className={`mic-button${listening ? ' listening' : ''}`}
+              onClick={toggleListening}
+              aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+              title={listening ? 'Stop voice input' : 'Start voice input'}
+            >
+              🎤
+            </button>
+          )}
+        </div>
         <button type="submit" disabled={submitting || tooShort}>
           {submitting ? 'Processing...' : 'Submit'}
         </button>
