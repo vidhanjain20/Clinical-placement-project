@@ -56,7 +56,8 @@ Test each endpoint manually. Run unit tests for gap-tally aggregation and JSON p
 
 ## Phase 2 — Minimum UI (capture + result)
 **Duration:** 1–2 weeks  
-**Deliverable:** A page you can actually use on your phone during a placement day
+**Deliverable:** A page you can actually use on your phone during a placement day  
+**Status: ✅ Done** — see [`client/`](client/). React + Vite app wired to the Phase 1 API with real Clerk sign-up/sign-in. Verified live: signed up a real account, submitted a real note, got back real extraction + recommendations rendered in the browser. Voice input (Web Speech API) is in, though its actual transcription quality needs a manual check by speaking into it — that can't be verified through browser automation. Not yet tested on an actual phone.
 
 Build in this order:
 1. Capture screen: text area + submit button. No voice yet, no styling.
