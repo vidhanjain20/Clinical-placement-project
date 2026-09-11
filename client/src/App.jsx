@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { SignedIn, SignedOut, SignIn, SignUp, UserButton } from '@clerk/clerk-react'
-import Capture from './Capture.jsx'
+import SignedInApp from './SignedInApp.jsx'
 import './App.css'
 
 // Phase 2 is screen 3 only (capture + result) — design-spec.md §3's other
@@ -26,7 +26,7 @@ function App() {
           <h1>Clinical Learning Navigator</h1>
           <UserButton />
         </header>
-        <Capture />
+        <SignedInApp />
       </SignedIn>
     </>
   )

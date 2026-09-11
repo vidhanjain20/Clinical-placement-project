@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
+import { apiFetch } from './api.js'
 
-const API_URL = import.meta.env.VITE_API_URL
 const MIN_LENGTH = 20 // matches server/src/routes/notes.js's own check
 const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition
 
@@ -9,7 +9,7 @@ const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechReco
 // from the two Claude calls (extraction + recommendation). One component
 // because the two are never seen independently — result only exists in
 // relation to the note that produced it.
-export default function Capture() {
+export default function Capture({ placementId }) {
   const { getToken } = useAuth()
   const [rawText, setRawText] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -65,20 +65,11 @@ export default function Capture() {
     setError(null)
     setResult(null)
     try {
-      const token = await getToken()
-      const response = await fetch(`${API_URL}/api/notes`, {
+      const body = await apiFetch(getToken, '/api/notes', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ raw_text: rawText }),
+        body: JSON.stringify({ raw_text: rawText, placement_id: placementId }),
       })
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}))
-        throw new Error(body.error || `Request failed (${response.status})`)
-      }
-      setResult(await response.json())
+      setResult(body)
     } catch (err) {
       setError(err.message)
     } finally {
