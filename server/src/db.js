@@ -56,8 +56,18 @@ db.exec(`
     last_updated TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS action_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL REFERENCES students(id),
+    note_id INTEGER NOT NULL REFERENCES notes(id),
+    action_text TEXT NOT NULL,
+    outcome TEXT,
+    logged_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_notes_student ON notes(student_id);
   CREATE INDEX IF NOT EXISTS idx_placements_student ON placements(student_id);
+  CREATE INDEX IF NOT EXISTS idx_action_log_student ON action_log(student_id);
 `);
 
 // Every table that holds a student's data (json columns above) stores it
@@ -127,4 +137,37 @@ export function updatePlacementMap(placementId, placementMap) {
 function getPlacementRow(row) {
   if (!row) return null;
   return { ...row, placement_map: row.placement_map ? JSON.parse(row.placement_map) : null };
+}
+
+// One row per recommended action, created alongside the note that
+// produced it (design-spec.md's ActionLog table). outcome starts NULL
+// ("pending") until the student answers the follow-through prompt on a
+// later visit — screen 3's "Did you act on this?" (design-spec.md §3).
+export function createActionLogEntries(studentId, noteId, actions) {
+  const insert = db.prepare('INSERT INTO action_log (student_id, note_id, action_text) VALUES (?, ?, ?)');
+  for (const action of actions) {
+    insert.run(studentId, noteId, action.topic);
+  }
+}
+
+export function getPendingActions(studentId) {
+  return db
+    .prepare('SELECT * FROM action_log WHERE student_id = ? AND outcome IS NULL ORDER BY logged_at ASC')
+    .all(studentId);
+}
+
+// Recent history (answered or not) for the recommendation prompt's own
+// "don't repeat a completed action" instruction — see prompts.js.
+export function getRecentActionLog(studentId, limit = 10) {
+  return db
+    .prepare('SELECT action_text, outcome FROM action_log WHERE student_id = ? ORDER BY logged_at DESC LIMIT ?')
+    .all(studentId, limit);
+}
+
+export function updateActionOutcome(actionId, studentId, outcome) {
+  const result = db
+    .prepare('UPDATE action_log SET outcome = ? WHERE id = ? AND student_id = ?')
+    .run(outcome, actionId, studentId);
+  if (result.changes === 0) return null;
+  return db.prepare('SELECT * FROM action_log WHERE id = ?').get(actionId);
 }

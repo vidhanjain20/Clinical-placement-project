@@ -74,6 +74,7 @@ export async function runRecommendation({
   placementMap,
   placementContext,
   assessmentDate,
+  actionLog,
 }) {
   const userMessage = JSON.stringify({
     todaysGaps,
@@ -85,6 +86,7 @@ export async function runRecommendation({
     placementMapSkills: placementMap?.skills ?? [],
     placementContext,
     assessmentDate,
+    actionLog: actionLog ?? [],
   });
   // Higher than the 1024 default: gap/exposure/skill_mappings can add up
   // to a lot of entries on a note that mentions several conditions/skills.

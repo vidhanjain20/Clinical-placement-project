@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { apiFetch } from './api.js'
+import FollowThrough from './FollowThrough.jsx'
 
 const MIN_LENGTH = 20 // matches server/src/routes/notes.js's own check
 const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -81,6 +82,7 @@ export default function Capture({ placementId }) {
 
   return (
     <div className="capture-screen">
+      <FollowThrough />
       <form onSubmit={handleSubmit}>
         <label htmlFor="raw-text">What did you see today?</label>
         <div className="textarea-wrap">

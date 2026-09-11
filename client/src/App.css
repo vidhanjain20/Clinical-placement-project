@@ -18,6 +18,33 @@
   gap: 1rem;
 }
 
+.follow-through {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.follow-through-item {
+  border: 1px solid #eef1ff;
+  border-radius: 8px;
+  padding: 0.6rem;
+}
+
+.follow-through-item p {
+  margin: 0 0 0.4rem;
+}
+
+.follow-through-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.follow-through-buttons button {
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+}
+
 .link-button {
   background: none;
   border: none;

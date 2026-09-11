@@ -8,6 +8,7 @@ import {
   applyExposureAndSkills,
   saveLearnerModelExposureAndSkills,
 } from '../learnerModel.js';
+import { createActionLogEntries, getRecentActionLog } from '../db.js';
 import { notesRateLimit } from '../rateLimit.js';
 
 const router = express.Router();
@@ -56,6 +57,7 @@ router.post('/', notesRateLimit, async (req, res, next) => {
       placementMap: placement?.placement_map,
       placementContext: placement ? { name: placement.name } : null,
       assessmentDate: null, // not collected anywhere in MVP onboarding (design-spec.md §3)
+      actionLog: getRecentActionLog(req.student.id),
     });
 
     const nextActions = recommendation.ok ? recommendation.data.actions : [];
@@ -68,6 +70,10 @@ router.post('/', notesRateLimit, async (req, res, next) => {
         skillMappings: recommendation.data.skill_mappings,
       });
       saveLearnerModelExposureAndSkills(req.student.id, { exposure, skills });
+
+      if (nextActions.length > 0) {
+        createActionLogEntries(req.student.id, noteId, nextActions);
+      }
     }
 
     db.prepare(
