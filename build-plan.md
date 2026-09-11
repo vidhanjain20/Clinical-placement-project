@@ -76,7 +76,7 @@ Add voice input (Web Speech API mic button) here — it's 20 lines of JS on top 
 ## Phase 3 — Placement setup + dashboard
 **Duration:** 1–2 weeks  
 **Deliverable:** A complete MVP with onboarding, daily capture, and a progress view  
-**Status: 🟡 Steps 1-3 done**, verified live (onboarding, placement setup with AI-generated + editable map, dashboard with progress/status/recurring-gaps/history). Steps 4-5 (follow-through prompt, placement summary) not built yet. Known limitation worth reading before relying on the dashboard's "skills performed" numbers: matching a note's wording against the placement map's skill names is plain text matching, not AI reconciliation like gap tags get — "reading ECGs" won't match a note that says "ECG interpretation" even though they mean the same thing, so performed-skill counts can undercount.
+**Status: ✅ Done**, all 5 steps verified live: onboarding, placement setup with AI-generated + editable map, dashboard (progress/status/recurring-gaps/history), follow-through prompt, and an end-of-placement summary report. The skill/condition matching limitation noted in an earlier pass here is fixed — it now goes through the same AI reconciliation gap tags already got, instead of plain text matching.
 
 Build in this order:
 1. Onboarding flow: year, medical school, placement — one field per step
