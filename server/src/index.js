@@ -5,6 +5,8 @@ import cors from 'cors';
 import { attachClerk, requireAuth } from './auth.js';
 import notesRouter from './routes/notes.js';
 import learnerModelRouter from './routes/learnerModel.js';
+import studentRouter from './routes/student.js';
+import placementsRouter from './routes/placements.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -20,6 +22,8 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use(attachClerk);
 app.use('/api/notes', requireAuth, notesRouter);
 app.use('/api/learner-model', requireAuth, learnerModelRouter);
+app.use('/api/student', requireAuth, studentRouter);
+app.use('/api/placements', requireAuth, placementsRouter);
 
 // Sentry error handler must be registered after all routes, before any
 // other error-handling middleware, so it sees every unhandled error.

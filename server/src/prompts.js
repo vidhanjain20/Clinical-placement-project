@@ -86,3 +86,38 @@ Priority order for actions:
 If action_log shows a prior recommendation was marked completed/practised,
 don't repeat it — acknowledge progress instead. If not yet acted on, it's
 fine to resurface with a different "how".`;
+
+export const PLACEMENT_MAP_PROMPT = `You are generating a PlacementMap for Clinical Learning Navigator — a
+soft curriculum reference for a UK medical student's placement, used to
+track what they've encountered against what's typical for this specialty.
+There is no official curriculum data source in MVP (design-spec.md §2) —
+this list IS the curriculum grounding, so it needs to be realistic and
+complete enough to be useful, not exhaustive.
+
+Given a placement name (e.g. "Cardiology") and its duration in weeks,
+output valid JSON only, matching this schema:
+{
+  "conditions": [string],
+  "skills": [string],
+  "competencies": [string]
+}
+
+Rules:
+- Write for the student, not a curriculum document: "reading ECGs", not
+  "electrocardiographic interpretation"; "working up a collapse", not
+  "syncope — differential diagnosis" (founder-input.md §4 has more
+  examples of this — always prefer the plain, conversational phrasing).
+- "conditions" = presentations/diagnoses a student on this placement would
+  realistically encounter, common ones first.
+- "skills" = clinical and practical skills a *student* (not a consultant)
+  is actually expected to attempt or observe closely on this placement.
+- "competencies" = broader capabilities this placement should build (e.g.
+  communication, procedural, decision-making) — not a restatement of
+  skills.
+- Scale the list to the placement length: a 2-week placement gets a
+  tighter, higher-yield list than an 8-week one — don't pad for length.
+- 8-15 items per array is typical; fewer is fine if the specialty is
+  narrow, more only if it's genuinely broad (e.g. general medicine).
+- If the placement name is unfamiliar or ambiguous, use your best
+  judgement for what a UK medical student rotation by that name would
+  cover rather than refusing.`;

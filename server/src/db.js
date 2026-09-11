@@ -78,3 +78,53 @@ export function getOrCreateStudent({ clerkUserId, email, name }) {
 
   return db.prepare('SELECT * FROM students WHERE id = ?').get(result.lastInsertRowid);
 }
+
+// Screen 1 (design-spec.md §3): year + medical school, collected once.
+// Deliberately not validating against a fixed list of schools/years here —
+// free text is fine for MVP, this is context for prompts, not a lookup key.
+export function updateStudentProfile(studentId, { yearOfStudy, medicalSchool }) {
+  db.prepare('UPDATE students SET year_of_study = ?, medical_school = ? WHERE id = ?').run(
+    yearOfStudy,
+    medicalSchool,
+    studentId,
+  );
+  return db.prepare('SELECT * FROM students WHERE id = ?').get(studentId);
+}
+
+// Only one placement is "active" per student at a time (design-spec.md's
+// "current placement" — capture posts against whichever one that is).
+// Starting a new one retires the previous rather than deleting it, since
+// its notes/history should stay attached to it.
+export function createPlacement(studentId, { name, durationWeeks, placementMap }) {
+  db.prepare("UPDATE placements SET status = 'completed' WHERE student_id = ? AND status = 'active'").run(studentId);
+
+  const startDate = new Date();
+  const endDate = new Date(startDate.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000);
+  const result = db
+    .prepare(
+      'INSERT INTO placements (student_id, name, start_date, end_date, status, placement_map) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+    .run(studentId, name, startDate.toISOString(), endDate.toISOString(), 'active', JSON.stringify(placementMap));
+
+  return getPlacementById(result.lastInsertRowid);
+}
+
+export function getActivePlacement(studentId) {
+  return getPlacementRow(
+    db.prepare("SELECT * FROM placements WHERE student_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1").get(studentId),
+  );
+}
+
+export function getPlacementById(placementId) {
+  return getPlacementRow(db.prepare('SELECT * FROM placements WHERE id = ?').get(placementId));
+}
+
+export function updatePlacementMap(placementId, placementMap) {
+  db.prepare('UPDATE placements SET placement_map = ? WHERE id = ?').run(JSON.stringify(placementMap), placementId);
+  return getPlacementById(placementId);
+}
+
+function getPlacementRow(row) {
+  if (!row) return null;
+  return { ...row, placement_map: row.placement_map ? JSON.parse(row.placement_map) : null };
+}

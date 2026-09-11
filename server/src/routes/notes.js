@@ -1,7 +1,13 @@
 import express from 'express';
 import { db } from '../db.js';
 import { runExtraction, runRecommendation } from '../aiClient.js';
-import { getLearnerModel, applyGapMappings, saveLearnerModelGapTally } from '../learnerModel.js';
+import {
+  getLearnerModel,
+  applyGapMappings,
+  saveLearnerModelGapTally,
+  applyExposureAndSkills,
+  saveLearnerModelExposureAndSkills,
+} from '../learnerModel.js';
 import { notesRateLimit } from '../rateLimit.js';
 
 const router = express.Router();
@@ -17,12 +23,16 @@ router.post('/', notesRateLimit, async (req, res, next) => {
       return res.status(400).json({ error: 'Note is too short — add a little more detail.' });
     }
 
+    const placement = placement_id
+      ? db.prepare('SELECT * FROM placements WHERE id = ? AND student_id = ?').get(placement_id, req.student.id)
+      : null;
+
     // Insert immediately with raw_text saved, before calling the AI at
     // all — design-spec.md §5's core rule: the student's words are never
     // lost even if everything after this point fails.
     const insertResult = db
       .prepare('INSERT INTO notes (student_id, placement_id, raw_text, extraction_status) VALUES (?, ?, ?, ?)')
-      .run(req.student.id, placement_id ?? null, raw_text, 'pending');
+      .run(req.student.id, placement?.id ?? null, raw_text, 'pending');
     const noteId = insertResult.lastInsertRowid;
 
     const extraction = await runExtraction(raw_text);
@@ -36,15 +46,12 @@ router.post('/', notesRateLimit, async (req, res, next) => {
     }
 
     const learnerModel = getLearnerModel(req.student.id);
-    const placement = placement_id
-      ? db.prepare('SELECT * FROM placements WHERE id = ?').get(placement_id)
-      : null;
 
     const recommendation = await runRecommendation({
       todaysGaps: extraction.data.gaps,
       gapTally: learnerModel.gap_tally,
       placementContext: placement ? { name: placement.name } : null,
-      assessmentDate: null, // not collected until Phase 3 onboarding
+      assessmentDate: null, // not collected anywhere in MVP onboarding (design-spec.md §3)
     });
 
     const nextActions = recommendation.ok ? recommendation.data.actions : [];
@@ -52,6 +59,9 @@ router.post('/', notesRateLimit, async (req, res, next) => {
       const updatedTally = applyGapMappings(learnerModel.gap_tally, recommendation.data.gap_mappings);
       saveLearnerModelGapTally(req.student.id, updatedTally);
     }
+
+    const { exposure, skills } = applyExposureAndSkills(learnerModel, extraction.data);
+    saveLearnerModelExposureAndSkills(req.student.id, { exposure, skills });
 
     db.prepare(
       "UPDATE notes SET structured = ?, gaps = ?, next_actions = ?, extraction_status = 'ok' WHERE id = ?",
