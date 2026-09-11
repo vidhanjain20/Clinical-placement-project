@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { EXTRACTION_PROMPT, RECOMMENDATION_PROMPT, PLACEMENT_MAP_PROMPT } from './prompts.js';
+import { EXTRACTION_PROMPT, RECOMMENDATION_PROMPT, PLACEMENT_MAP_PROMPT, PLACEMENT_SUMMARY_PROMPT } from './prompts.js';
 import { Sentry } from './sentry.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -96,4 +96,17 @@ export async function runRecommendation({
 export async function generatePlacementMap({ name, durationWeeks }) {
   const userMessage = JSON.stringify({ name, durationWeeks });
   return callAndParseJson(PLACEMENT_MAP_PROMPT, userMessage, defaultCallModel, { maxTokens: 2048 });
+}
+
+export async function generatePlacementSummary({
+  name,
+  durationWeeks,
+  strong,
+  developing,
+  neverEncountered,
+  recurringGaps,
+  notesCount,
+}) {
+  const userMessage = JSON.stringify({ name, durationWeeks, strong, developing, neverEncountered, recurringGaps, notesCount });
+  return callAndParseJson(PLACEMENT_SUMMARY_PROMPT, userMessage, defaultCallModel, { maxTokens: 1536 });
 }

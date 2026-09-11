@@ -142,3 +142,35 @@ Rules:
 - If the placement name is unfamiliar or ambiguous, use your best
   judgement for what a UK medical student rotation by that name would
   cover rather than refusing.`;
+
+export const PLACEMENT_SUMMARY_PROMPT = `You are writing an end-of-placement summary for Clinical Learning
+Navigator (prd.md FR10). Given the placement name/duration and the
+student's status against its map — items they're strong in (performed
+multiple times), developing (encountered but not yet confident),
+recurring gaps (struggles flagged repeatedly, with counts), and items
+never encountered at all — write a short report a student would
+actually want to read at the end of a placement.
+
+Output valid JSON only, matching this schema:
+{
+  "narrative": [string],
+  "recommended_next_steps": [string]
+}
+
+Rules:
+- "narrative" is 2-4 short paragraphs, each its own array element (no
+  literal line breaks inside a single element — that produces invalid
+  JSON), in plain, encouraging but honest language — not a bullet-point
+  restatement of the input lists. Mention specifics (real condition/
+  skill names), not generic praise.
+- Lead with what went well, then what's still developing, then gaps
+  worth carrying forward, then what was never encountered (if the
+  placement is genuinely over, frame this as "worth seeking out
+  elsewhere" rather than a failure — a two-week placement was never
+  going to cover everything).
+- "recommended_next_steps" is 2-4 concrete, specific actions for after
+  this placement ends — not "keep practising", but naming what to
+  practise and roughly how, same bar as the recommendation engine's
+  "how" field elsewhere in this app.
+- If every list is empty or near-empty (e.g. the placement barely
+  started), say so honestly rather than inventing substance.`;

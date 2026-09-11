@@ -31,7 +31,8 @@ db.exec(`
     start_date TEXT,
     end_date TEXT,
     status TEXT NOT NULL DEFAULT 'active',
-    placement_map TEXT
+    placement_map TEXT,
+    summary TEXT
   );
 
   CREATE TABLE IF NOT EXISTS notes (
@@ -69,6 +70,16 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_placements_student ON placements(student_id);
   CREATE INDEX IF NOT EXISTS idx_action_log_student ON action_log(student_id);
 `);
+
+// CREATE TABLE IF NOT EXISTS only helps on a fresh database — an existing
+// placements table (from before the `summary` column existed) needs an
+// actual migration. SQLite has no "ADD COLUMN IF NOT EXISTS", so check
+// first via table_info rather than try/catch-ing a "duplicate column"
+// error.
+const placementColumns = db.prepare('PRAGMA table_info(placements)').all();
+if (!placementColumns.some((col) => col.name === 'summary')) {
+  db.exec('ALTER TABLE placements ADD COLUMN summary TEXT');
+}
 
 // Every table that holds a student's data (json columns above) stores it
 // as a TEXT column containing JSON — SQLite has no native JSON type, so
@@ -134,9 +145,18 @@ export function updatePlacementMap(placementId, placementMap) {
   return getPlacementById(placementId);
 }
 
+export function savePlacementSummary(placementId, summary) {
+  db.prepare('UPDATE placements SET summary = ? WHERE id = ?').run(JSON.stringify(summary), placementId);
+  return getPlacementById(placementId);
+}
+
 function getPlacementRow(row) {
   if (!row) return null;
-  return { ...row, placement_map: row.placement_map ? JSON.parse(row.placement_map) : null };
+  return {
+    ...row,
+    placement_map: row.placement_map ? JSON.parse(row.placement_map) : null,
+    summary: row.summary ? JSON.parse(row.summary) : null,
+  };
 }
 
 // One row per recommended action, created alongside the note that

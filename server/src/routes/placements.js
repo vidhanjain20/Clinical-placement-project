@@ -1,6 +1,6 @@
 import express from 'express';
-import { createPlacement, getActivePlacement, getPlacementById, updatePlacementMap } from '../db.js';
-import { generatePlacementMap } from '../aiClient.js';
+import { createPlacement, getActivePlacement, getPlacementById, updatePlacementMap, savePlacementSummary } from '../db.js';
+import { generatePlacementMap, generatePlacementSummary } from '../aiClient.js';
 
 const router = express.Router();
 
@@ -43,6 +43,40 @@ router.patch('/:id', (req, res) => {
     return res.status(404).json({ error: 'Placement not found.' });
   }
   res.json(updatePlacementMap(req.params.id, placementMap));
+});
+
+// FR10 (prd.md): end-of-placement report. Takes the strong/developing/
+// never-encountered breakdown from the client rather than recomputing it
+// server-side — Dashboard.jsx already derives exactly this from the same
+// placement_map + learner-model data, so this avoids maintaining that
+// categorization logic in two places.
+router.post('/:id/summary', async (req, res, next) => {
+  try {
+    const { strong, developing, never_encountered: neverEncountered, recurring_gaps: recurringGaps, notes_count: notesCount } = req.body;
+    const placement = getPlacementById(req.params.id);
+    if (!placement || placement.student_id !== req.student.id) {
+      return res.status(404).json({ error: 'Placement not found.' });
+    }
+
+    const durationWeeks = Math.round((new Date(placement.end_date) - new Date(placement.start_date)) / (7 * 24 * 60 * 60 * 1000));
+
+    const result = await generatePlacementSummary({
+      name: placement.name,
+      durationWeeks,
+      strong: strong ?? [],
+      developing: developing ?? [],
+      neverEncountered: neverEncountered ?? [],
+      recurringGaps: recurringGaps ?? [],
+      notesCount: notesCount ?? 0,
+    });
+    if (!result.ok) {
+      return res.status(502).json({ error: 'Could not generate a summary — try again.' });
+    }
+
+    res.json(savePlacementSummary(req.params.id, result.data));
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

@@ -16,6 +16,9 @@ export default function Dashboard({ placement }) {
   const [notes, setNotes] = useState(null)
   const [error, setError] = useState(null)
   const [expandedNoteId, setExpandedNoteId] = useState(null)
+  const [summary, setSummary] = useState(placement.summary)
+  const [generatingSummary, setGeneratingSummary] = useState(false)
+  const [summaryError, setSummaryError] = useState(null)
 
   useEffect(() => {
     Promise.all([apiFetch(getToken, '/api/learner-model'), apiFetch(getToken, '/api/notes')])
@@ -44,6 +47,28 @@ export default function Dashboard({ placement }) {
   const recurringGaps = Object.entries(learnerModel.gap_tally)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
+
+  async function handleGenerateSummary() {
+    setGeneratingSummary(true)
+    setSummaryError(null)
+    try {
+      const updated = await apiFetch(getToken, `/api/placements/${placement.id}/summary`, {
+        method: 'POST',
+        body: JSON.stringify({
+          strong: strong.map((s) => s.name),
+          developing: developing.map((s) => s.name),
+          never_encountered: priorityGaps.map((s) => s.name),
+          recurring_gaps: recurringGaps,
+          notes_count: notes.length,
+        }),
+      })
+      setSummary(updated.summary)
+    } catch (err) {
+      setSummaryError(err.message)
+    } finally {
+      setGeneratingSummary(false)
+    }
+  }
 
   return (
     <div className="dashboard">
@@ -104,6 +129,31 @@ export default function Dashboard({ placement }) {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section>
+        <h2>Placement summary</h2>
+        <button onClick={handleGenerateSummary} disabled={generatingSummary}>
+          {generatingSummary ? 'Generating...' : summary ? 'Regenerate summary' : 'Generate placement summary'}
+        </button>
+        {summaryError && <p className="error">{summaryError}</p>}
+        {summary && (
+          <div className="placement-summary">
+            {summary.narrative.map((paragraph, i) => (
+              <p key={i}>{paragraph}</p>
+            ))}
+            {summary.recommended_next_steps?.length > 0 && (
+              <>
+                <h3>Recommended next steps</h3>
+                <ul>
+                  {summary.recommended_next_steps.map((step, i) => (
+                    <li key={i}>{step}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
       </section>
     </div>
   )
