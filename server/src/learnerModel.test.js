@@ -31,46 +31,59 @@ test('unrelated tags stay independent', () => {
   assert.deepEqual(result, { ecg_interpretation: 1, echo_interpretation: 1 });
 });
 
-test('exposure/skills: new condition starts at count 1, not performed if only observed', () => {
+test('exposure/skills: new condition starts at count 1, performed reflects the AI-judged flag', () => {
   const result = applyExposureAndSkills(
     { exposure: {}, skills: {} },
-    { conditions: ['CHF'], skills: [], participation: { performed: [], observed: ['CHF workup'], assisted: [] } },
+    { exposureMappings: [{ raw: 'CHF', canonical: 'heart failure', performed: false }], skillMappings: [] },
   );
-  assert.equal(result.exposure.chf.count, 1);
-  assert.equal(result.exposure.chf.performed, false);
+  assert.equal(result.exposure['heart failure'].count, 1);
+  assert.equal(result.exposure['heart failure'].performed, false);
 });
 
-test('exposure/skills: performed once stays performed even if a later note only observes it', () => {
+test('exposure/skills: performed once stays performed even if a later note marks it not performed', () => {
   const first = applyExposureAndSkills(
     { exposure: {}, skills: {} },
-    { conditions: ['CHF'], skills: [], participation: { performed: ['managed CHF patient'], observed: [], assisted: [] } },
+    { exposureMappings: [{ raw: 'CHF', canonical: 'heart failure', performed: true }], skillMappings: [] },
   );
-  const second = applyExposureAndSkills(
-    first,
-    { conditions: ['CHF'], skills: [], participation: { performed: [], observed: ['CHF ward round'], assisted: [] } },
-  );
-  assert.equal(second.exposure.chf.count, 2);
-  assert.equal(second.exposure.chf.performed, true);
+  const second = applyExposureAndSkills(first, {
+    exposureMappings: [{ raw: 'CHF ward round', canonical: 'heart failure', performed: false }],
+    skillMappings: [],
+  });
+  assert.equal(second.exposure['heart failure'].count, 2);
+  assert.equal(second.exposure['heart failure'].performed, true);
 });
 
-test('exposure/skills: matches a performed phrase that is shorter than the skill name', () => {
+test('exposure/skills: raw wording reconciles to the placement map\'s canonical wording', () => {
+  const result = applyExposureAndSkills(
+    { exposure: {}, skills: {} },
+    { exposureMappings: [], skillMappings: [{ raw: 'ECG interpretation', canonical: 'reading ECGs', performed: true }] },
+  );
+  assert.deepEqual(Object.keys(result.skills), ['reading ecgs']);
+  assert.equal(result.skills['reading ecgs'].performed, true);
+});
+
+test('exposure/skills: same canonical item mentioned twice in one note only counts once', () => {
   const result = applyExposureAndSkills(
     { exposure: {}, skills: {} },
     {
-      conditions: [],
-      skills: ['taking a chest pain history'],
-      participation: { performed: ['chest pain history'], observed: [], assisted: [] },
+      exposureMappings: [
+        { raw: 'CHF', canonical: 'heart failure', performed: true },
+        { raw: 'heart failure again', canonical: 'heart failure', performed: false },
+      ],
+      skillMappings: [],
     },
   );
-  assert.equal(result.skills['taking a chest pain history'].performed, true);
+  assert.equal(result.exposure['heart failure'].count, 1);
 });
 
 test('exposure/skills: skills tracked separately from conditions', () => {
   const result = applyExposureAndSkills(
     { exposure: {}, skills: {} },
-    { conditions: ['CHF'], skills: ['auscultation'], participation: { performed: ['auscultation'], observed: [], assisted: [] } },
+    {
+      exposureMappings: [{ raw: 'CHF', canonical: 'CHF', performed: true }],
+      skillMappings: [{ raw: 'auscultation', canonical: 'auscultation', performed: true }],
+    },
   );
   assert.deepEqual(Object.keys(result.exposure), ['chf']);
   assert.deepEqual(Object.keys(result.skills), ['auscultation']);
-  assert.equal(result.skills.auscultation.performed, true);
 });

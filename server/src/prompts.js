@@ -49,11 +49,12 @@ Rules:
   signal for prioritisation downstream.`;
 
 export const RECOMMENDATION_PROMPT = `You are the recommendation engine for Clinical Learning Navigator. Given
-today's extracted note (raw gap phrasing), the student's accumulated
-gap_tally (canonical tag → count, last ~10 notes), exposure history,
+today's extracted note (raw gap/condition/skill phrasing, participation),
+the student's accumulated gap_tally (canonical tag → count, last ~10
+notes), the current placement's map (its own conditions/skills lists),
 placement context (name, week X of Y), and any upcoming assessment date,
-produce 1-3 prioritised actions AND reconcile today's gaps against the
-existing tally.
+produce 1-3 prioritised actions AND reconcile today's gaps, conditions,
+and skills against the existing tally / placement map.
 
 Output:
 {
@@ -63,6 +64,12 @@ Output:
   ],
   "gap_mappings": [
     { "raw": string, "canonical": string }
+  ],
+  "exposure_mappings": [
+    { "raw": string, "canonical": string, "performed": boolean }
+  ],
+  "skill_mappings": [
+    { "raw": string, "canonical": string, "performed": boolean }
   ]
 }
 
@@ -74,6 +81,20 @@ canonical tag (short, snake_case, student-facing meaning preserved) if
 nothing in gap_tally is genuinely the same underlying weakness. Do not
 merge two gaps that are only superficially similar (e.g. "ECG
 interpretation" and "echo interpretation" are different skills).
+
+For exposure_mappings/skill_mappings: one entry per condition/skill
+mentioned in today's note (from the extraction's own "conditions" and
+"skills" arrays, not gaps). If it's genuinely the same thing as an item
+in the placement map's conditions/skills list, "canonical" is that exact
+list item's text (even if today's wording differs — "ECG interpretation"
+in the note should map to "reading ECGs" if that's the map's wording for
+the same skill). If it isn't a good match to anything on the map, keep
+"canonical" equal to "raw" — an out-of-map encounter is still worth
+tracking, it just won't count toward the map's X/Y totals. "performed" is
+true if today's participation (performed or assisted, not merely
+observed) covers this item, using your judgement rather than exact
+wording — "took the chest pain history" counts as performed for a skill
+named "taking a chest pain history".
 
 Priority order for actions:
 1. Explicit learning_points from the student (direct signal, weight highest)

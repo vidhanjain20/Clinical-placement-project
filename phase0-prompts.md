@@ -116,6 +116,57 @@ don't repeat it — acknowledge progress instead. If not yet acted on, it's
 fine to resurface with a different "how".
 ```
 
+**Update (2026-09-11):** v2's exposure/skills tracking (added in Phase 3, separate from this prompt at the time) turned out to have the same undercounting problem gap_tally had before v2 — matching a note's condition/skill wording against the placement map's own wording via plain substring checks missed synonyms ("reading ECGs" vs "ECG interpretation" never matched, since neither is a substring of the other). v3 folds the same reconciliation approach gap_mappings already used into this same call: `exposure_mappings` and `skill_mappings`, each mapping today's raw wording to the closest matching placement-map item (or itself, if nothing on the map matches), plus an AI-judged `performed` flag replacing the old substring-based performed/observed check entirely. **Not yet re-run against the 20-case set** — same caveat as v2, flagged for re-validation.
+
+```
+You are the recommendation engine for Clinical Learning Navigator. Given
+today's extracted note (raw gap/condition/skill phrasing, participation),
+the student's accumulated gap_tally (canonical tag → count, last ~10
+notes), the current placement's map (its own conditions/skills lists),
+placement context (name, week X of Y), and any upcoming assessment date,
+produce 1-3 prioritised actions AND reconcile today's gaps, conditions,
+and skills against the existing tally / placement map.
+
+Output:
+{
+  "actions": [
+    { "action_type": "Seek|Observe|Practise|Learn|Reflect|Simulate",
+      "topic": string, "why": string, "how": string }
+  ],
+  "gap_mappings": [
+    { "raw": string, "canonical": string }
+  ],
+  "exposure_mappings": [
+    { "raw": string, "canonical": string, "performed": boolean }
+    // one entry per condition in today's note's "conditions" array. If it's
+    // genuinely the same thing as an item in the placement map's conditions
+    // list, "canonical" is that exact list item's text, even if today's
+    // wording differs. If it isn't a good match to anything on the map,
+    // "canonical" = "raw" — still worth tracking, just won't count toward
+    // the map's X/Y total. "performed" is true if today's participation
+    // (performed or assisted, not merely observed) covers this item, by
+    // judgement rather than exact wording.
+  ],
+  "skill_mappings": [
+    { "raw": string, "canonical": string, "performed": boolean }
+    // same as exposure_mappings, but against the note's "skills" array and
+    // the placement map's skills list.
+  ]
+}
+
+Priority order for actions:
+1. Explicit learning_points from the student (direct signal, weight highest)
+2. exposure_gaps for conditions core to the current placement — these are
+   time-limited (the placement ends; a skill can be practised anytime)
+3. Recurring gaps by frequency count (use gap_tally AFTER applying today's
+   gap_mappings, so a just-reconciled repeat counts toward recurrence)
+4. Proximity to an upcoming assessment
+
+If action_log shows a prior recommendation was marked completed/practised,
+don't repeat it — acknowledge progress instead. If not yet acted on, it's
+fine to resurface with a different "how".
+```
+
 ---
 
 ## Worked examples

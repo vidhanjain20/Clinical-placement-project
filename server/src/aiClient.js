@@ -65,9 +65,30 @@ export async function runExtraction(rawText) {
   return callAndParseJson(EXTRACTION_PROMPT, rawText);
 }
 
-export async function runRecommendation({ todaysGaps, gapTally, placementContext, assessmentDate }) {
-  const userMessage = JSON.stringify({ todaysGaps, gapTally, placementContext, assessmentDate });
-  return callAndParseJson(RECOMMENDATION_PROMPT, userMessage);
+export async function runRecommendation({
+  todaysGaps,
+  todaysConditions,
+  todaysSkills,
+  todaysParticipation,
+  gapTally,
+  placementMap,
+  placementContext,
+  assessmentDate,
+}) {
+  const userMessage = JSON.stringify({
+    todaysGaps,
+    todaysConditions,
+    todaysSkills,
+    todaysParticipation,
+    gapTally,
+    placementMapConditions: placementMap?.conditions ?? [],
+    placementMapSkills: placementMap?.skills ?? [],
+    placementContext,
+    assessmentDate,
+  });
+  // Higher than the 1024 default: gap/exposure/skill_mappings can add up
+  // to a lot of entries on a note that mentions several conditions/skills.
+  return callAndParseJson(RECOMMENDATION_PROMPT, userMessage, defaultCallModel, { maxTokens: 2048 });
 }
 
 export async function generatePlacementMap({ name, durationWeeks }) {

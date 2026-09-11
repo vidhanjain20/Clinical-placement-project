@@ -49,7 +49,11 @@ router.post('/', notesRateLimit, async (req, res, next) => {
 
     const recommendation = await runRecommendation({
       todaysGaps: extraction.data.gaps,
+      todaysConditions: extraction.data.conditions,
+      todaysSkills: extraction.data.skills,
+      todaysParticipation: extraction.data.participation,
       gapTally: learnerModel.gap_tally,
+      placementMap: placement?.placement_map,
       placementContext: placement ? { name: placement.name } : null,
       assessmentDate: null, // not collected anywhere in MVP onboarding (design-spec.md §3)
     });
@@ -58,10 +62,13 @@ router.post('/', notesRateLimit, async (req, res, next) => {
     if (recommendation.ok) {
       const updatedTally = applyGapMappings(learnerModel.gap_tally, recommendation.data.gap_mappings);
       saveLearnerModelGapTally(req.student.id, updatedTally);
-    }
 
-    const { exposure, skills } = applyExposureAndSkills(learnerModel, extraction.data);
-    saveLearnerModelExposureAndSkills(req.student.id, { exposure, skills });
+      const { exposure, skills } = applyExposureAndSkills(learnerModel, {
+        exposureMappings: recommendation.data.exposure_mappings,
+        skillMappings: recommendation.data.skill_mappings,
+      });
+      saveLearnerModelExposureAndSkills(req.student.id, { exposure, skills });
+    }
 
     db.prepare(
       "UPDATE notes SET structured = ?, gaps = ?, next_actions = ?, extraction_status = 'ok' WHERE id = ?",
